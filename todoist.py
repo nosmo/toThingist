@@ -39,6 +39,10 @@ class ToDoist(object):
     def getUncompletedTodos(self, project_id):
         return self.__request("getUncompletedItems", {"project_id" : project_id})
 
+    def createTodo(self, name, project_id):
+        return self.__request("addItem", {"project_id": project_id,
+                                          "content": name})
+
 def main():
     config = ConfigParser.ConfigParser()
     login_f = config.read(".tothingist")
