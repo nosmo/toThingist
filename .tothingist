@@ -1,0 +1,8 @@
+[DEFAULT]
+thingsdestination: Inbox
+[login]
+username: derp
+password: herp
+[config]
+statefile: ~/.tothingist_state
+thingsdestination: Today
