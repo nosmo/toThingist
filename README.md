@@ -27,10 +27,11 @@ the inbox of the configured Todoist account, and all todos from the
 Todoist inbox to ```thingslocation```. The mapping between todos is
 maintained in the state file.
 
+The script is largely designed with an eye to it being run via cron.
 
 Current state
 ---------
 
 The script can currently sync the Todoist inbox to a list in Things,
-and a Things list to the Todoist inbox. Status is not currently
-tracked but is the next thing on the list.
+and a Things list to the Todoist inbox. The completed/cancelled
+attributes of both systems are synced back and forth.
