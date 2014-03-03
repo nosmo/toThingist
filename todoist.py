@@ -39,6 +39,14 @@ class ToDoist(object):
     def getUncompletedTodos(self, project_id):
         return self.__request("getUncompletedItems", {"project_id" : project_id})
 
+    def getAllTodos(self, project_id):
+        uncompleted_items = self.__request("getUncompletedItems", {"project_id" : project_id})
+        completed_items = self.__request("getCompletedItems", {"project_id" : project_id})
+        return uncompleted_items + completed_items
+
+    def setComplete(self, item_id):
+        return self.__request("completeItems", {"ids": [int(item_id)]})
+
     def createTodo(self, name, project_id):
         return self.__request("addItem", {"project_id": project_id,
                                           "content": name})
@@ -49,7 +57,9 @@ def main():
     username = config.get('login', 'username')
     password = config.get('login', 'password')
     a = ToDoist(username, password)
-    print a.getProjects()
+    inbox_id = [ i for i in a.getProjects() if i["name"] == "Inbox" ][0]
+    import pprint
+    pprint.pprint( a.getAllTodos(inbox_id["id"]))
 
 if __name__ == "__main__":
     main()
