@@ -13,13 +13,7 @@ import pprint
 BASE_STATE = {"incomplete": [], "complete": [],
               "todoist_to_things": {}, "things_to_todoist": {} }
 
-def _syncThingsListToTodoist(todoist_obj, listname, statefile=None, tag_import=False):
-
-    state = BASE_STATE.copy()
-    if statefile and os.path.isfile(statefile):
-        state_f = open(statefile)
-        state = json.loads(state_f.read())
-        state_f.close()
+def _syncThingsListToTodoist(todoist_obj, listname, state, tag_import=False):
 
     todos = thingsinterface.ToDos(listname)
     inbox_id = -1
@@ -29,6 +23,12 @@ def _syncThingsListToTodoist(todoist_obj, listname, statefile=None, tag_import=F
 
     for todo in todos.todos:
         if todo.thingsid in state["things_to_todoist"]:
+            todoist_id = state["things_to_todoist"][todo.thingsid]
+            if todo.todo_object.status() == thingsinterface.STATUS_MAP["closed"] or\
+               todo.todo_object.status() == thingsinterface.STATUS_MAP["cancelled"]:
+                complete_result = todoist_obj.setComplete(todoist_id)
+                sys.stderr.write("Marking task '%s' as complete in ToDoist\n" % todo.name)
+
             sys.stderr.write("Todo %s (\"%s\") synced already\n" % (todo.thingsid, todo.name))
             continue
 
@@ -37,12 +37,9 @@ def _syncThingsListToTodoist(todoist_obj, listname, statefile=None, tag_import=F
         state["todoist_to_things"][todoist_id] = todo.thingsid
         state["things_to_todoist"][todo.thingsid] = todoist_id
 
-    if statefile:
-        state_f = open(statefile, "w")
-        state_f.write(json.dumps(state))
-        state_f.close()
+    return state
 
-def _syncTodoistToThings(todoist_obj, statefile=None, tag_import=False, location="Inbox"):
+def _syncTodoistToThings(todoist_obj, state, tag_import=False, location="Inbox"):
 
     """Sync todoist inbox todos into a given Things location.
 
@@ -54,7 +51,44 @@ def _syncTodoistToThings(todoist_obj, statefile=None, tag_import=False, location
 
     """
 
-    #TODO add verbose output
+    for project in todoist_obj.getProjects():
+        if project["name"] == "Inbox":
+            todoist_todos = todoist_obj.getAllTodos(project["id"])
+            for todoist_todo in todoist_todos:
+                creation_date = todoist_todo["date_added"]
+                name = todoist_todo["content"]
+                todoist_id = str(todoist_todo["id"])
+
+                if todoist_id in state["todoist_to_things"]:
+                    sys.stderr.write("Todo %s (\"%s\") synced already\n" % (todoist_id, name))
+
+                    if todoist_todo["checked"] == 1:
+                        #todo is checked off - check off locally
+                        to_complete = thingsinterface.ToDo._getTodoByID(
+                            state["todoist_to_things"][todoist_id])
+                        to_complete.complete()
+                        print "marked '%s' as complete" % name
+
+                    continue
+
+                tags = []
+                if tag_import:
+                    tags = ["todoist_sync"]
+
+                if todoist_todo["checked"] != 1:
+                    newtodo = thingsinterface.ToDo(name=name, tags=tags, location=location)
+                    state["todoist_to_things"][todoist_id] = newtodo.thingsid
+                    state["things_to_todoist"][newtodo.thingsid] = todoist_id
+    return state
+
+def main():
+    config = ConfigParser.ConfigParser()
+    login_f = config.read(os.path.expanduser("~/.tothingist"))
+    username = config.get('login', 'username')
+    password = config.get('login', 'password')
+    statefile = os.path.expanduser(config.get("config", "statefile"))
+    things_location = config.get("config", "thingslocation")
+    todoist_obj = todoist.ToDoist(username, password)
 
     state = BASE_STATE.copy()
     if statefile and os.path.isfile(statefile):
@@ -62,44 +96,16 @@ def _syncTodoistToThings(todoist_obj, statefile=None, tag_import=False, location
         state = json.loads(state_f.read())
         state_f.close()
 
-    for project in todoist_obj.getProjects():
-        if project["name"] == "Inbox":
-            uncompleteds = todoist_obj.getUncompletedTodos(project["id"])
-            for uncompleted in uncompleteds:
-                creation_date = uncompleted["date_added"]
-                name = uncompleted["content"]
-                todoist_id = str(uncompleted["id"])
-
-                if todoist_id in state["todoist_to_things"]:
-                    sys.stderr.write("Todo %s (\"%s\") synced already\n" % (todoist_id, name))
-                    #TODO check state etc etc
-                    # for now, just check whether it exists
-                    continue
-
-                tags = []
-                if tag_import:
-                    tags = ["todoist_sync"]
-                newtodo = thingsinterface.ToDo(name, tags=tags, location=location)
-                #state["todoist_to_things"][todoist_id] = newtodo.thingsid
-                state["things_to_todoist"][newtodo.thingsid] = todoist_id
+    state = _syncTodoistToThings(todoist_obj, state, tag_import=True,
+                                 location=things_location)
+    state = _syncThingsListToTodoist(todoist_obj,
+                                     things_location, state, tag_import=True)
 
     if statefile:
+        print "Writing out data"
         state_f = open(statefile, "w")
         state_f.write(json.dumps(state))
         state_f.close()
-
-def main():
-    config = ConfigParser.ConfigParser()
-    login_f = config.read(".tothingist")
-    username = config.get('login', 'username')
-    password = config.get('login', 'password')
-    state_file = os.path.expanduser(config.get("config", "statefile"))
-    things_location = config.get("config", "thingslocation")
-    todoist_obj = todoist.ToDoist(username, password)
-    _syncTodoistToThings(todoist_obj, statefile=state_file, tag_import=True,
-                         location=things_location)
-    _syncThingsListToTodoist(todoist_obj, statefile=state_file, tag_import=True,
-                             location=things_location)
 
 if __name__ == "__main__":
     main()
