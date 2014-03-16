@@ -1,19 +1,23 @@
 #!/usr/bin/python
 
 import ConfigParser
-import thingsinterface
-import todoist
+import optparse
 import json
 import sys
 import os.path
 import pprint
+
+import todoist
+
+import thingsinterface
 
 """toThingist - sync between Todoist and Cultured Code's Things"""
 
 BASE_STATE = {"incomplete": [], "complete": [],
               "todoist_to_things": {}, "things_to_todoist": {} }
 
-def _syncThingsListToTodoist(todoist_obj, listname, state, tag_import=False):
+def _syncThingsListToTodoist(todoist_obj, listname, state,
+                             tag_import=False, verbose=False):
 
     todos = thingsinterface.ToDos(listname)
     inbox_id = -1
@@ -27,9 +31,11 @@ def _syncThingsListToTodoist(todoist_obj, listname, state, tag_import=False):
             if todo.todo_object.status() == thingsinterface.STATUS_MAP["closed"] or\
                todo.todo_object.status() == thingsinterface.STATUS_MAP["cancelled"]:
                 complete_result = todoist_obj.setComplete(todoist_id)
-                sys.stderr.write("Marking task '%s' as complete in ToDoist\n" % todo.name)
+                if verbose:
+                    sys.stderr.write("Marking task '%s' as complete in ToDoist\n" % todo.name)
 
-            sys.stderr.write("Todo %s (\"%s\") synced already\n" % (todo.thingsid, todo.name))
+            if verbose:
+                sys.stderr.write("Todo %s (\"%s\") synced already\n" % (todo.thingsid, todo.name))
             continue
 
         z = todoist_obj.createTodo(todo.name, inbox_id)
@@ -39,7 +45,8 @@ def _syncThingsListToTodoist(todoist_obj, listname, state, tag_import=False):
 
     return state
 
-def _syncTodoistToThings(todoist_obj, state, tag_import=False, location="Inbox"):
+def _syncTodoistToThings(todoist_obj, state, tag_import=False,
+                         location="Inbox", verbose=False):
 
     """Sync todoist inbox todos into a given Things location.
 
@@ -60,14 +67,16 @@ def _syncTodoistToThings(todoist_obj, state, tag_import=False, location="Inbox")
                 todoist_id = str(todoist_todo["id"])
 
                 if todoist_id in state["todoist_to_things"]:
-                    sys.stderr.write("Todo %s (\"%s\") synced already\n" % (todoist_id, name))
+                    if verbose:
+                        sys.stderr.write("Todo %s (\"%s\") synced already\n" % (todoist_id, name))
 
                     if todoist_todo["checked"] == 1:
                         #todo is checked off - check off locally
                         to_complete = thingsinterface.ToDo._getTodoByID(
                             state["todoist_to_things"][todoist_id])
                         to_complete.complete()
-                        print "marked '%s' as complete" % name
+                        if verbose:
+                            sys.stderr.write("marked '%s' as complete" % name)
 
                     continue
 
@@ -82,8 +91,19 @@ def _syncTodoistToThings(todoist_obj, state, tag_import=False, location="Inbox")
     return state
 
 def main():
+    parser = optparse.OptionParser()
+    parser.add_option("-v", "--verbose", dest="verbose",
+                      help="Be verbose",
+                      action="store_true")
+    parser.add_option("-c", "--config",
+                      action="store", dest="configpath",
+                      default="~/.tothingist",
+                      help="alternate path for configuration file")
+
+    (options, args) = parser.parse_args()
+
     config = ConfigParser.ConfigParser()
-    login_f = config.read(os.path.expanduser("~/.tothingist"))
+    login_f = config.read(os.path.expanduser(options.configpath))
     username = config.get('login', 'username')
     password = config.get('login', 'password')
     statefile = os.path.expanduser(config.get("config", "statefile"))
@@ -97,12 +117,12 @@ def main():
         state_f.close()
 
     state = _syncTodoistToThings(todoist_obj, state, tag_import=True,
-                                 location=things_location)
+                                 location=things_location, verbose=options.verbose)
     state = _syncThingsListToTodoist(todoist_obj,
-                                     things_location, state, tag_import=True)
+                                     things_location, state, tag_import=True,
+                                     verbose=options.verbose)
 
     if statefile:
-        print "Writing out data"
         state_f = open(statefile, "w")
         state_f.write(json.dumps(state))
         state_f.close()
