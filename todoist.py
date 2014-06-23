@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import urllib2
 import urllib
@@ -49,7 +50,7 @@ class ToDoist(object):
 
     def createTodo(self, name, project_id):
         return self.__request("addItem", {"project_id": project_id,
-                                          "content": name})
+                                          "content": name.encode('utf-8')})
 
 def main():
     config = ConfigParser.ConfigParser()
