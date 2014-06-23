@@ -113,7 +113,11 @@ def main():
     state = BASE_STATE.copy()
     if statefile and os.path.isfile(statefile):
         state_f = open(statefile)
-        state = json.loads(state_f.read())
+        try:
+            state = json.loads(state_f.read())
+        except ValueError:
+            print "Failed to open state file! Is it valid JSON?"
+            raise SystemExit(1)
         state_f.close()
 
     state = _syncTodoistToThings(todoist_obj, state, tag_import=True,
@@ -123,9 +127,14 @@ def main():
                                      verbose=options.verbose)
 
     if statefile:
-        state_f = open(statefile, "w")
-        state_f.write(json.dumps(state))
-        state_f.close()
+        if not state:
+            sys.stderr.write(("Not writing state file as there is no content"
+                             " to sync. This could be in error or you'll need"
+                             " to create at least one todo. "))
+        else:
+            state_f = open(statefile, "w")
+            state_f.write(json.dumps(state))
+            state_f.close()
 
 if __name__ == "__main__":
     main()

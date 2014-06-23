@@ -34,4 +34,5 @@ Current state
 
 The script can currently sync the Todoist inbox to a list in Things,
 and a Things list to the Todoist inbox. The completed/cancelled
-attributes of both systems are synced back and forth.
+attributes of both systems are synced back and forth. Changes to
+the content of existing todo objects are not mirrored.
