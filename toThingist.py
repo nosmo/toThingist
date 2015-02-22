@@ -25,13 +25,12 @@ class ToThingist(object):
 
     def sync_things_to_todoist(self, verbose=False):
 
-        todos = thingsinterface.ToDos(self.things_location)
         inbox_id = -1
         for project in self.todoist.getProjects():
             if project["name"] == "Inbox":
                 inbox_id = project["id"]
 
-        for todo in todos.todos:
+        for todo in thingsinterface.ToDos(self.things_location):
             if todo.thingsid in self.state["things_to_todoist"]:
                 todoist_id = self.state["things_to_todoist"][todo.thingsid]
                 todo_status = todo.todo_object.status()
