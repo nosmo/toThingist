@@ -5,7 +5,6 @@ import optparse
 import json
 import sys
 import os.path
-import pprint
 
 import todoist
 
@@ -14,81 +13,100 @@ import thingsinterface
 """toThingist - sync between Todoist and Cultured Code's Things"""
 
 BASE_STATE = {"incomplete": [], "complete": [],
-              "todoist_to_things": {}, "things_to_todoist": {} }
+              "todoist_to_things": {}, "things_to_todoist": {}}
 
-def _syncThingsListToTodoist(todoist_obj, listname, state,
-                             tag_import=False, verbose=False):
 
-    todos = thingsinterface.ToDos(listname)
-    inbox_id = -1
-    for project in todoist_obj.getProjects():
-        if project["name"] == "Inbox":
-            inbox_id = project["id"]
+class ToThingist(object):
 
-    for todo in todos.todos:
-        if todo.thingsid in state["things_to_todoist"]:
-            todoist_id = state["things_to_todoist"][todo.thingsid]
-            if todo.todo_object.status() == thingsinterface.STATUS_MAP["closed"] or\
-               todo.todo_object.status() == thingsinterface.STATUS_MAP["cancelled"]:
-                complete_result = todoist_obj.setComplete(todoist_id)
-                if verbose:
-                    sys.stderr.write("Marking task '%s' as complete in ToDoist\n" % todo.name)
+    def __init__(self, todoist_obj, things_location, state):
+        self.todoist = todoist_obj
+        self.things_location = things_location
+        self.state = state
 
-            if verbose:
-                sys.stderr.write("Todo %s (\"%s\") synced already\n" % (todo.thingsid, todo.name))
-            continue
+    def sync_things_to_todoist(self, verbose=False):
 
-        z = todoist_obj.createTodo(todo.name, inbox_id)
-        todoist_id = z["id"]
-        state["todoist_to_things"][todoist_id] = todo.thingsid
-        state["things_to_todoist"][todo.thingsid] = todoist_id
+        todos = thingsinterface.ToDos(self.things_location)
+        inbox_id = -1
+        for project in self.todoist.getProjects():
+            if project["name"] == "Inbox":
+                inbox_id = project["id"]
 
-    return state
-
-def _syncTodoistToThings(todoist_obj, state, tag_import=False,
-                         location="Inbox", verbose=False):
-
-    """Sync todoist inbox todos into a given Things location.
-
-     Args:
-      todoist_obj: Todoist object
-      statefile: path to the file in which the things/todoist id mapping is stored
-      tag_import: tag all imported todos with "todoist_sync"
-      location: The things location to import into
-
-    """
-
-    for project in todoist_obj.getProjects():
-        if project["name"] == "Inbox":
-            todoist_todos = todoist_obj.getAllTodos(project["id"])
-            for todoist_todo in todoist_todos:
-                creation_date = todoist_todo["date_added"]
-                name = todoist_todo["content"]
-                todoist_id = str(todoist_todo["id"])
-
-                if todoist_id in state["todoist_to_things"]:
+        for todo in todos.todos:
+            if todo.thingsid in self.state["things_to_todoist"]:
+                todoist_id = self.state["things_to_todoist"][todo.thingsid]
+                todo_status = todo.todo_object.status()
+                if todo_status == thingsinterface.STATUS_MAP["closed"] or\
+                   todo_status == thingsinterface.STATUS_MAP["cancelled"]:
+                    complete_result = self.todoist.setComplete(todoist_id)
                     if verbose:
-                        sys.stderr.write("Todo %s (\"%s\") synced already\n" % (todoist_id, name))
+                        sys.stderr.write(
+                            "Marking task '%s' as complete in ToDoist\n" % todo.name
+                        )
 
-                    if todoist_todo["checked"] == 1:
-                        #todo is checked off - check off locally
-                        to_complete = thingsinterface.ToDo._getTodoByID(
-                            state["todoist_to_things"][todoist_id])
-                        to_complete.complete()
+                if verbose:
+                    sys.stderr.write(
+                        "Todo %s (\"%s\") synced already\n" % (todo.thingsid, todo.name)
+                    )
+                continue
+
+            z = self.todoist.createTodo(todo.name, inbox_id)
+            todoist_id = z["id"]
+            self.state["todoist_to_things"][todoist_id] = todo.thingsid
+            self.state["things_to_todoist"][todo.thingsid] = todoist_id
+
+        #TODO better return
+        return self.state
+
+
+    def sync_todoist_to_things(self, tag_import=False,
+                               location="Inbox", verbose=False):
+
+        """Sync todoist inbox todos into a given Things location.
+
+         Args:
+          self.todoist: Todoist object
+          statefile: path to the file in which the things/todoist id mapping is stored
+          tag_import: tag all imported todos with "todoist_sync"
+          location: The things location to import into
+
+        """
+
+        for project in self.todoist.getProjects():
+            if project["name"] == "Inbox":
+                todoist_todos = self.todoist.getAllTodos(project["id"])
+                for todoist_todo in todoist_todos:
+                    creation_date = todoist_todo["date_added"]
+                    name = todoist_todo["content"]
+                    todoist_id = str(todoist_todo["id"])
+
+                    if todoist_id in self.state["todoist_to_things"]:
                         if verbose:
-                            sys.stderr.write("marked '%s' as complete" % name)
+                            sys.stderr.write(
+                                "Todo %s (\"%s\") synced already\n" % (todoist_id, name)
+                            )
 
-                    continue
+                        if todoist_todo["checked"] == 1:
+                            # todo is checked off - check off locally
+                            to_complete = thingsinterface.ToDo._getTodoByID(
+                                self.state["todoist_to_things"][todoist_id])
+                            to_complete.complete()
+                            if verbose:
+                                sys.stderr.write("marked '%s' as complete" % name)
 
-                tags = []
-                if tag_import:
-                    tags = ["todoist_sync"]
+                        continue
 
-                if todoist_todo["checked"] != 1:
-                    newtodo = thingsinterface.ToDo(name=name, tags=tags, location=location)
-                    state["todoist_to_things"][todoist_id] = newtodo.thingsid
-                    state["things_to_todoist"][newtodo.thingsid] = todoist_id
-    return state
+                    tags = []
+                    if tag_import:
+                        tags = ["todoist_sync"]
+
+                    if todoist_todo["checked"] != 1:
+                        newtodo = thingsinterface.ToDo(name=name,
+                                                       tags=tags,
+                                                       location=location)
+                        self.state["todoist_to_things"][todoist_id] = newtodo.thingsid
+                        self.state["things_to_todoist"][newtodo.thingsid] = todoist_id
+        # TODO better return
+        return self.state
 
 def main():
     parser = optparse.OptionParser()
@@ -103,7 +121,7 @@ def main():
     (options, args) = parser.parse_args()
 
     config = ConfigParser.ConfigParser()
-    login_f = config.read(os.path.expanduser(options.configpath))
+    config.read(os.path.expanduser(options.configpath))
     username = config.get('login', 'username')
     password = config.get('login', 'password')
     statefile = os.path.expanduser(config.get("config", "statefile"))
@@ -120,20 +138,21 @@ def main():
             raise SystemExit(1)
         state_f.close()
 
-    state = _syncTodoistToThings(todoist_obj, state, tag_import=True,
-                                 location=things_location, verbose=options.verbose)
-    state = _syncThingsListToTodoist(todoist_obj,
-                                     things_location, state, tag_import=True,
-                                     verbose=options.verbose)
+    tothingist_obj = ToThingist(todoist_obj, things_location, state)
+
+    tothingist_obj.sync_todoist_to_things(tag_import=True,
+                                          location=things_location,
+                                          verbose=options.verbose)
+    tothingist_obj.sync_things_to_todoist(verbose=options.verbose)
 
     if statefile:
-        if not state:
+        if not tothingist_obj.state:
             sys.stderr.write(("Not writing state file as there is no content"
-                             " to sync. This could be in error or you'll need"
-                             " to create at least one todo. "))
+                              " to sync. This could be in error or you'll need"
+                              " to create at least one todo. "))
         else:
             state_f = open(statefile, "w")
-            state_f.write(json.dumps(state))
+            state_f.write(json.dumps(tothingist_obj.state))
             state_f.close()
 
 if __name__ == "__main__":
