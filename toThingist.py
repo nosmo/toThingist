@@ -33,9 +33,7 @@ class ToThingist(object):
         for todo in thingsinterface.ToDos(self.things_location):
             if todo.thingsid in self.state["things_to_todoist"]:
                 todoist_id = self.state["things_to_todoist"][todo.thingsid]
-                todo_status = todo.todo_object.status()
-                if todo_status == thingsinterface.STATUS_MAP["closed"] or\
-                   todo_status == thingsinterface.STATUS_MAP["cancelled"]:
+                if todo.is_closed() or todo.is_cancelled():
                     complete_result = self.todoist.setComplete(todoist_id)
                     if verbose:
                         sys.stderr.write(
