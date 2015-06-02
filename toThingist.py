@@ -5,6 +5,7 @@ import optparse
 import json
 import sys
 import os.path
+import tempfile
 
 import todoist
 
@@ -148,9 +149,12 @@ def main():
                               " to sync. This could be in error or you'll need"
                               " to create at least one todo. "))
         else:
-            state_f = open(statefile, "w")
-            state_f.write(json.dumps(tothingist_obj.state))
-            state_f.close()
+            # Avoid zeroing the file when the user's system has no
+            # disk space by writing a tempfile
+            temp_state_filename = tempfile.mkstemp(text=True)
+            with open(temp_state_filename[1], "w") as temp_state_f:
+                temp_state_f.write(json.dumps(tothingist_obj.state))
+            os.rename(temp_state_filename[1], statefile)
 
 if __name__ == "__main__":
     main()
