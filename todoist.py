@@ -10,6 +10,12 @@ class ToDoist(object):
     """Ugly wrapper for the ToDoist.com API"""
 
     def __request(self, path, args={}):
+        '''
+         Request a path from ToDoist and decode the JSON.
+
+         path: a path to an object to be requested
+         args: a dictionary containing key/value args to be passed via GET
+        '''
 
         BASE_URL = "https://todoist.com/API/"
 
@@ -23,6 +29,9 @@ class ToDoist(object):
         return results
 
     def __login(self):
+        '''
+         Log into ToDoist and return the API token.
+        '''
         return self.__request(
             "login", {"email": self.__username,
                       "password": self.__password}
@@ -34,33 +43,57 @@ class ToDoist(object):
         self.__password = password
         self.token = self.__login()
 
-    def getProjects(self):
+    def get_projects(self):
+        '''
+        Get all projects.
+        '''
         return self.__request("getProjects")
 
-    def getUncompletedTodos(self, project_id):
-        return self.__request("getUncompletedItems", {"project_id" : project_id})
+    def get_uncompleted_todos(self, project_id):
+        '''
+        Get all uncompleted todo items.
+        '''
+        return self.__request("getUncompletedItems",
+                              {"project_id" : project_id})
 
-    def getAllTodos(self, project_id):
-        uncompleted_items = self.__request("getUncompletedItems", {"project_id" : project_id})
-        completed_items = self.__request("getCompletedItems", {"project_id" : project_id})
+    def get_all_todos(self, project_id):
+        '''
+        Get all todo objects.
+        '''
+        uncompleted_items = self.__request("getUncompletedItems",
+                                           {"project_id" : project_id})
+        completed_items = self.__request("getCompletedItems",
+                                         {"project_id" : project_id})
         return uncompleted_items + completed_items
 
-    def setComplete(self, item_id):
+    def set_complete(self, item_id):
+        '''
+        Set a todo's state to complete.
+
+         item_id: the todoist ID of the todo.
+        '''
         return self.__request("completeItems", {"ids": [int(item_id)]})
 
-    def createTodo(self, name, project_id):
+    def create_todo(self, name, project_id):
+        '''
+        Create a new todo.
+
+         name: the label for the todo item.
+         project_id: the id of the project in which to create a todo.
+        '''
+
         return self.__request("addItem", {"project_id": project_id,
                                           "content": name.encode('utf-8')})
 
 def main():
     config = ConfigParser.ConfigParser()
-    login_f = config.read(".tothingist")
+    config.read(".tothingist")
     username = config.get('login', 'username')
     password = config.get('login', 'password')
     a = ToDoist(username, password)
     inbox_id = [ i for i in a.getProjects() if i["name"] == "Inbox" ][0]
     import pprint
-    pprint.pprint( a.getAllTodos(inbox_id["id"]))
+    pprint.pprint(a.getAllTodos(inbox_id["id"]))
 
 if __name__ == "__main__":
     main()
