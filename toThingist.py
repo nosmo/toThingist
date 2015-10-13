@@ -25,6 +25,13 @@ class ToThingist(object):
         self.state = state
 
     def sync_things_to_todoist(self, verbose=False):
+        """
+        Sync the Things location to the ToDoist inbox.
+
+        Args:
+         verbose: bool. If true, debug output will go to stderr.
+
+        """
 
         inbox_id = -1
         for project in self.todoist.get_projects():
@@ -43,7 +50,9 @@ class ToThingist(object):
 
                 if verbose:
                     sys.stderr.write(
-                        "Todo %s (\"%s\") synced already\n" % (todo.thingsid, todo.name)
+                        "Todo %s (\"%s\") synced already\n" % (
+                            todo.thingsid, todo.name
+                        )
                     )
                 continue
 
@@ -63,7 +72,7 @@ class ToThingist(object):
 
          Args:
           self.todoist: Todoist object
-          statefile: path to the file in which the things/todoist id mapping is stored
+          statefile: path to the file storing the things/todoist id mapping
           tag_import: tag all imported todos with "todoist_sync"
           location: The things location to import into
 
@@ -80,7 +89,8 @@ class ToThingist(object):
                     if todoist_id in self.state["todoist_to_things"]:
                         if verbose:
                             sys.stderr.write(
-                                "Todo %s (\"%s\") synced already\n" % (todoist_id, name)
+                                "Todo %s (\"%s\") synced already\n" % (
+                                    todoist_id, name)
                             )
 
                         if todoist_todo["checked"] == 1:
@@ -89,7 +99,9 @@ class ToThingist(object):
                                 self.state["todoist_to_things"][todoist_id])
                             to_complete.complete()
                             if verbose:
-                                sys.stderr.write("marked '%s' as complete" % name)
+                                sys.stderr.write(
+                                    "marked '%s' as complete" % name
+                                )
 
                         continue
 
@@ -101,8 +113,10 @@ class ToThingist(object):
                         newtodo = thingsinterface.ToDo(name=name,
                                                        tags=tags,
                                                        location=location)
-                        self.state["todoist_to_things"][todoist_id] = newtodo.thingsid
-                        self.state["things_to_todoist"][newtodo.thingsid] = todoist_id
+                        self.state[
+                            "todoist_to_things"][todoist_id] = newtodo.thingsid
+                        self.state[
+                            "things_to_todoist"][newtodo.thingsid] = todoist_id
         # TODO better return
         return self.state
 
