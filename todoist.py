@@ -43,20 +43,20 @@ class ToDoist(object):
         self.__password = password
         self.token = self.__login()
 
-    def getProjects(self):
+    def get_projects(self):
         '''
         Get all projects.
         '''
         return self.__request("getProjects")
 
-    def getUncompletedTodos(self, project_id):
+    def get_uncompleted_todos(self, project_id):
         '''
         Get all uncompleted todo items.
         '''
         return self.__request("getUncompletedItems",
                               {"project_id" : project_id})
 
-    def getAllTodos(self, project_id):
+    def get_all_todos(self, project_id):
         '''
         Get all todo objects.
         '''
@@ -66,7 +66,7 @@ class ToDoist(object):
                                          {"project_id" : project_id})
         return uncompleted_items + completed_items
 
-    def setComplete(self, item_id):
+    def set_complete(self, item_id):
         '''
         Set a todo's state to complete.
 
@@ -74,7 +74,7 @@ class ToDoist(object):
         '''
         return self.__request("completeItems", {"ids": [int(item_id)]})
 
-    def createTodo(self, name, project_id):
+    def create_todo(self, name, project_id):
         '''
         Create a new todo.
 

@@ -27,7 +27,7 @@ class ToThingist(object):
     def sync_things_to_todoist(self, verbose=False):
 
         inbox_id = -1
-        for project in self.todoist.getProjects():
+        for project in self.todoist.get_projects():
             if project["name"] == "Inbox":
                 inbox_id = project["id"]
 
@@ -35,7 +35,7 @@ class ToThingist(object):
             if todo.thingsid in self.state["things_to_todoist"]:
                 todoist_id = self.state["things_to_todoist"][todo.thingsid]
                 if todo.is_closed() or todo.is_cancelled():
-                    complete_result = self.todoist.setComplete(todoist_id)
+                    complete_result = self.todoist.set_complete(todoist_id)
                     if verbose:
                         sys.stderr.write(
                             "Marking task '%s' as complete in ToDoist\n" % todo.name
@@ -47,7 +47,7 @@ class ToThingist(object):
                     )
                 continue
 
-            z = self.todoist.createTodo(todo.name, inbox_id)
+            z = self.todoist.create_todo(todo.name, inbox_id)
             todoist_id = z["id"]
             self.state["todoist_to_things"][todoist_id] = todo.thingsid
             self.state["things_to_todoist"][todo.thingsid] = todoist_id
@@ -69,9 +69,9 @@ class ToThingist(object):
 
         """
 
-        for project in self.todoist.getProjects():
+        for project in self.todoist.get_projects():
             if project["name"] == "Inbox":
-                todoist_todos = self.todoist.getAllTodos(project["id"])
+                todoist_todos = self.todoist.get_all_todos(project["id"])
                 for todoist_todo in todoist_todos:
                     creation_date = todoist_todo["date_added"]
                     name = todoist_todo["content"]
