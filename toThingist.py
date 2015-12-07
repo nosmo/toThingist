@@ -57,7 +57,7 @@ class ToThingist(object):
 
 
     def sync_todoist_to_things(self, tag_import=False,
-                               location="Inbox", verbose=False):
+                               verbose=False):
 
         """Sync todoist inbox todos into a given Things location.
 
@@ -65,7 +65,6 @@ class ToThingist(object):
           self.todoist: Todoist object
           statefile: path to the file in which the things/todoist id mapping is stored
           tag_import: tag all imported todos with "todoist_sync"
-          location: The things location to import into
 
         """
 
@@ -100,7 +99,7 @@ class ToThingist(object):
                     if todoist_todo["checked"] != 1:
                         newtodo = thingsinterface.ToDo(name=name,
                                                        tags=tags,
-                                                       location=location)
+                                                       location=self.things_location)
                         self.state["todoist_to_things"][todoist_id] = newtodo.thingsid
                         self.state["things_to_todoist"][newtodo.thingsid] = todoist_id
         # TODO better return
@@ -139,7 +138,6 @@ def main():
     tothingist_obj = ToThingist(todoist_obj, things_location, state)
 
     tothingist_obj.sync_todoist_to_things(tag_import=True,
-                                          location=things_location,
                                           verbose=options.verbose)
     tothingist_obj.sync_things_to_todoist(verbose=options.verbose)
 
