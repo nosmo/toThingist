@@ -1,8 +1,7 @@
 [DEFAULT]
 thingslocation: Today
 [login]
-username: durr
-password: hurr
+api_token: f00f00f00f00f00f00f
 [config]
 statefile: ~/.tothingist_state
 thingslocation: Today

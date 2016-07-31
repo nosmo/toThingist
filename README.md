@@ -11,8 +11,8 @@ Operation
 ---------
 
 toThingist.py reads a config file at ```.tothingist```. This file
-specifies a few obvious things like username and password for
-todoist.com.
+specifies a few obvious things like the Todoist API token. The example
+```.tothingist``` file is a complete example.
 
 The ```statefile``` option is currently used to maintain a mapping
 between todoist IDs and things IDs. Use of the state file is not

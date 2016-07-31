@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# This is NOT a typo - using the system python is deliberate.
 
 import ConfigParser
 import optparse
@@ -7,7 +8,7 @@ import sys
 import os.path
 import tempfile
 
-import todoist
+import todoistinterface
 
 import thingsinterface
 
@@ -33,10 +34,7 @@ class ToThingist(object):
 
         """
 
-        inbox_id = -1
-        for project in self.todoist.get_projects():
-            if project["name"] == "Inbox":
-                inbox_id = project["id"]
+        inbox_id = self.todoist.get_inbox_id()
 
         for todo in thingsinterface.ToDos(self.things_location):
             if todo.thingsid in self.state["things_to_todoist"]:
@@ -71,9 +69,8 @@ class ToThingist(object):
         """Sync todoist inbox todos into a given Things location.
 
          Args:
-          self.todoist: Todoist object
-          statefile: path to the file storing the things/todoist id mapping
           tag_import: tag all imported todos with "todoist_sync"
+          verbose: bool, if True output debug to stderr
 
         """
 
@@ -133,11 +130,10 @@ def main():
 
     config = ConfigParser.ConfigParser()
     config.read(os.path.expanduser(options.configpath))
-    username = config.get('login', 'username')
-    password = config.get('login', 'password')
+    api_key = config.get('login', 'api_token')
     statefile = os.path.expanduser(config.get("config", "statefile"))
     things_location = config.get("config", "thingslocation")
-    todoist_obj = todoist.ToDoist(username, password)
+    todoist_obj = todoistinterface.ToDoistInterface(api_key)
 
     state = BASE_STATE.copy()
     if statefile and os.path.isfile(statefile):
